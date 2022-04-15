@@ -1,0 +1,43 @@
+name: CI 
+
+on: [push]
+
+env:
+  PIPENV_VENV_IN_PROJECT: enabled
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+    - uses: syphar/restore-virtualenv@v1
+      id: venv
+
+    - uses: syphar/restore-pip-download-cache@v1
+      if: steps.venv.outputs.cache-hit != 'true'
+
+    - run: pip install pipenv
+    - run: pipenv sync -d
+      if: steps.venv.outputs.cache-hit != 'true'
+
+  test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+    - uses: syphar/restore-virtualenv@v1
+      id: venv
+
+    - run: pipenv run pytest --cov=test --html=report.html --self-contained-html
+
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: report.html
